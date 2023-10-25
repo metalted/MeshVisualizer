@@ -9,12 +9,18 @@ namespace MeshVisualizer
     [BepInPlugin(pluginGuid, pluginName, pluginVersion)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string pluginName = "Mesh Visualizer";
-        public const string pluginGuid = "com.metalted.zeepkist.meshvisualizer";
-        public const string pluginVersion = "1.0";
+        public const string pluginName = "Area of Effect";
+        public const string pluginGuid = "com.metalted.zeepkist.areaofeffect";
+        public const string pluginVersion = "1.2.0";
         public static bool wireFrameAllowed = false;
         public ConfigEntry<KeyCode> refresh;
         public ConfigEntry<KeyCode> remove;
+        public ConfigEntry<KeyCode> autoUpdateKey;
+
+        public ConfigEntry<float> lineWidth;
+        public ConfigEntry<string> lineColor;
+        public ConfigEntry<bool> autoUpdate;
+        public string[] colors = new string[] { "Black", "Blue", "Cyan", "Gray", "Green", "Magenta", "Red", "White", "Yellow" };
 
         public List<GameObject> currentBoxes = new List<GameObject>();
 
@@ -27,8 +33,8 @@ namespace MeshVisualizer
             lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
             lineRenderer.startColor = color;
             lineRenderer.endColor = color;
-            lineRenderer.startWidth = 0.2f;
-            lineRenderer.endWidth = 0.2f;
+            lineRenderer.startWidth = (float) lineWidth.BoxedValue;
+            lineRenderer.endWidth = (float) lineWidth.BoxedValue;
 
             // Set the number of positions (vertices) for the LineRenderer (8 for a box)
             lineRenderer.positionCount = 16;
@@ -55,7 +61,6 @@ namespace MeshVisualizer
             return boxObject;
         }
 
-
         private void Awake()
         {
             // Plugin startup logic
@@ -63,10 +68,14 @@ namespace MeshVisualizer
 
             LevelEditorApi.EnteredLevelEditor += () => { wireFrameAllowed = true; };
             LevelEditorApi.ExitedLevelEditor += () => { wireFrameAllowed = false; DestroyWireframes(); };
-
-            refresh = Config.Bind("Controls", "Refresh", KeyCode.Keypad9, "Refresh the bounding boxes.");
+            refresh = Config.Bind("Controls", "Refresh", KeyCode.Keypad7, "Refresh the bounding boxes.");
             remove = Config.Bind("Controls", "Remove", KeyCode.Keypad8, "Remove the bounding boxes.");
-
+            autoUpdateKey = Config.Bind("Controls", "Toggle Auto Update", KeyCode.Keypad9, "Enable or disable the auto wireframe update.");
+            lineWidth = Config.Bind("Preferences", "Line Width", 0.2f, "The width of the line in the wireframe.");
+            lineColor = Config.Bind("Preferences", "Line Color", "Red", new ConfigDescription("Selected Color", new AcceptableValueList<string>(colors)));
+            autoUpdate = Config.Bind("Preferences", "Auto Update", false, "Update the wireframes automatically.");
+            
+        
         }
 
         private void DestroyWireframes()
@@ -86,7 +95,7 @@ namespace MeshVisualizer
         {
             if (wireFrameAllowed)
             {
-                if (Input.GetKeyDown((KeyCode)refresh.BoxedValue))
+                if (Input.GetKeyDown((KeyCode)refresh.BoxedValue) || (bool)autoUpdate.BoxedValue)
                 {
                     DestroyWireframes();
 
@@ -97,7 +106,7 @@ namespace MeshVisualizer
                     foreach (MeshCollider t in triggers)
                     {
                         Bounds b = t.bounds;
-                        GameObject wireframe = CreateWireframeBox(b, Color.red);
+                        GameObject wireframe = CreateWireframeBox(b, GetColor((string)lineColor.BoxedValue));
                         currentBoxes.Add(wireframe);
                     }
                 }
@@ -105,6 +114,12 @@ namespace MeshVisualizer
                 if (Input.GetKeyDown((KeyCode)remove.BoxedValue))
                 {
                     DestroyWireframes();
+                }
+
+                if(Input.GetKeyDown((KeyCode)autoUpdateKey.BoxedValue))
+                {
+                    autoUpdate.Value = !((bool)autoUpdate.BoxedValue);
+                    PlayerManager.Instance.messenger.Log("AOE Auto Update: " + ( ((bool)autoUpdate.BoxedValue) ? "On" : "Off"), 1f);
                 }
             }
         }
@@ -127,6 +142,32 @@ namespace MeshVisualizer
             }
 
             return triggerColliders;
+        }
+
+        public Color GetColor(string colorName)
+        {
+            switch(colorName)
+            {
+                case "Black":
+                    return Color.black;
+                case "Blue":
+                    return Color.blue;
+                case "Cyan":
+                    return Color.cyan;
+                case "Gray":
+                    return Color.gray;
+                case "Green":
+                    return Color.green;
+                case "Magenta":
+                    return Color.magenta;
+                case "Red":
+                    return Color.red;
+                default:
+                case "White":
+                    return Color.white;
+                case "Yellow":
+                    return Color.yellow;                    
+            }
         }
     }
 
