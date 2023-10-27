@@ -11,7 +11,7 @@ namespace MeshVisualizer
     {
         public const string pluginName = "Area of Effect";
         public const string pluginGuid = "com.metalted.zeepkist.areaofeffect";
-        public const string pluginVersion = "1.2.0";
+        public const string pluginVersion = "1.3.0";
         public static bool wireFrameAllowed = false;
         public ConfigEntry<KeyCode> refresh;
         public ConfigEntry<KeyCode> remove;
@@ -100,10 +100,10 @@ namespace MeshVisualizer
                     DestroyWireframes();
 
                     //Get all the current triggers
-                    List<MeshCollider> triggers = GetTriggers();
+                    List<Collider> triggers = GetTriggers();
 
                     //Go over all triggers and create wireframe boxes
-                    foreach (MeshCollider t in triggers)
+                    foreach (Collider t in triggers)
                     {
                         Bounds b = t.bounds;
                         GameObject wireframe = CreateWireframeBox(b, GetColor((string)lineColor.BoxedValue));
@@ -124,14 +124,14 @@ namespace MeshVisualizer
             }
         }
 
-        public List<MeshCollider> GetTriggers()
+        public List<Collider> GetTriggers()
         {
-            List<MeshCollider> triggerColliders = new List<MeshCollider>();
+            List<Collider> triggerColliders = new List<Collider>();
             
             // Find all mesh colliders in the scene
-            MeshCollider[] allColliders = FindObjectsOfType<MeshCollider>();
+            Collider[] allColliders = FindObjectsOfType<Collider>();
 
-            foreach (MeshCollider collider in allColliders)
+            foreach (Collider collider in allColliders)
             {
                 // Check if the collider is set as a trigger
                 if (collider.isTrigger)
