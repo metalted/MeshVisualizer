@@ -11,7 +11,7 @@ namespace MeshVisualizer
     {
         public const string pluginName = "Area of Effect";
         public const string pluginGuid = "com.metalted.zeepkist.areaofeffect";
-        public const string pluginVersion = "1.4.0";
+        public const string pluginVersion = "1.5.0";
         public static bool wireFrameAllowed = false;
 
         // Configuration options
@@ -59,6 +59,19 @@ namespace MeshVisualizer
                     foreach (Collider trigger in triggers)
                     {
                         Bounds bounds = GetBoundingBox(trigger, trigger.transform);
+                        
+                        BlockProperties bp = trigger.GetComponentInParent<BlockProperties>();
+                        if(bp != null)
+                        {
+                            //Omnibooster
+                            if(bp.blockID == 1545)
+                            {
+                                GameObject dodec = CreateWireframeDodecagon(bounds, GetColor((string)lineColor.BoxedValue), trigger.transform);
+                                currentBoxes.Add(dodec);
+                                continue;
+                            }
+                        }
+
                         GameObject wireframe = CreateWireframeBox(bounds, GetColor((string)lineColor.BoxedValue), trigger.transform);
                         currentBoxes.Add(wireframe);
                     }
@@ -88,6 +101,55 @@ namespace MeshVisualizer
                 }
             }
             currentBoxes.Clear();
+        }
+
+        public GameObject CreateWireframeDodecagon(Bounds bounds, Color color, Transform obj)
+        {
+            GameObject dodecagonObject = new GameObject("WireframeDodecagon");
+            LineRenderer lineRenderer = dodecagonObject.AddComponent<LineRenderer>();
+
+            // Set the material and color for the LineRenderer
+            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            lineRenderer.startColor = color;
+            lineRenderer.endColor = color;
+            lineRenderer.startWidth = (float)lineWidth.BoxedValue;
+            lineRenderer.endWidth = (float)lineWidth.BoxedValue;
+
+            // Define the vertices of the wireframe dodecagon
+            Vector3[] top = new Vector3[12];
+            Vector3[] bot = new Vector3[12];
+
+            float radius = bounds.size.x / 2.0f; // Assuming bounds.size.x represents the diameter of the dodecagon
+
+            for (int i = 0; i < 12; i++)
+            {
+                float angle = 2 * Mathf.PI / 12 * i;
+                float x = bounds.center.x + Mathf.Cos(angle) * radius;
+                float z = bounds.center.z + Mathf.Sin(angle) * radius;
+                float yTop = bounds.center.y + bounds.size.y / 2.0f; // Adjusting y to be at the top of the dodecagon
+                float yBottom = bounds.center.y - bounds.size.y / 2.0f; // Adjusting y to be at the bottom of the dodecagon
+                top[i] = obj.TransformPoint(new Vector3(x, yTop, z));
+                bot[i] = obj.TransformPoint(new Vector3(x, yBottom, z));
+            }
+
+            Vector3[] dodecLine = new Vector3[]
+            {
+                // First zigzag run
+                top[0], top[1], bot[1], bot[2], top[2], top[3], bot[3], bot[4],
+                top[4], top[5], bot[5], bot[6], top[6], top[7], bot[7], bot[8],
+                top[8], top[9], bot[9], bot[10], top[10], top[11], bot[11], bot[0],
+                top[0], bot[0], bot[1], top[1],
+
+                // Second zigzag run
+                top[2], bot[2], bot[3], top[3], top[4], bot[4],
+                bot[5], top[5], top[6], bot[6], bot[7], top[7], top[8], bot[8],
+                bot[9], top[9], top[10], bot[10], bot[11], top[11], top[0]
+            };
+
+            lineRenderer.positionCount = dodecLine.Length;
+            lineRenderer.SetPositions(dodecLine);
+
+            return dodecagonObject;
         }
 
         // Create a wireframe box
