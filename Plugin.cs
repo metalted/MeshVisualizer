@@ -9,9 +9,9 @@ namespace MeshVisualizer
     [BepInPlugin(pluginGuid, pluginName, pluginVersion)]
     public class Plugin : BaseUnityPlugin
     {
-        public const string pluginName = "Area of Effect2";
+        public const string pluginName = "Area of Effect";
         public const string pluginGuid = "com.metalted.zeepkist.areaofeffect";
-        public const string pluginVersion = "1.6";
+        public const string pluginVersion = "1.6.1";
 
         public static Plugin Instance;
         public LEV_LevelEditorCentral central;
@@ -21,6 +21,8 @@ namespace MeshVisualizer
         public ConfigEntry<KeyCode> toggleAreas;
         public ConfigEntry<string> appliedIDs;
         public List<int> idsToApplyTo = new List<int>(new int[] { 2256, 69, 1545, 290, 2280, 1280, 1281, 1282, 1666 });
+
+        public Mesh unitDodecagonMesh;
 
         private void Awake()
         {
@@ -34,6 +36,8 @@ namespace MeshVisualizer
             // Create a semi-transparent orange material
             semiTransparentOrange = new Material(Shader.Find("Standard"));
             semiTransparentOrange.color = new Color(1f, 0.5f, 0f, 0.55f);
+
+            unitDodecagonMesh = CreateDodecagonMesh();
 
             // Set the material to be transparent
             semiTransparentOrange.SetFloat("_Mode", 3);
@@ -62,15 +66,81 @@ namespace MeshVisualizer
 
         private void Update()
         {
-            if(central != null)
+            if (central != null)
             {
-                if(Input.GetKeyDown(KeyCode.Keypad9))
+                if (Input.GetKeyDown(KeyCode.Keypad9))
                 {
                     areaEnabled.Value = !areaEnabled.Value;
                     //Debug.Log("Area enabled: " + areaEnabled.Value);
-                    Config.Save();                   
+                    Config.Save();
                 }
             }
+        }
+
+        private Mesh CreateDodecagonMesh()
+        {
+            Mesh mesh = new Mesh();
+
+            // Define the vertices for a unit dodecagon (12-sided cylinder)
+            int sides = 12;
+            float radius = 0.5f;
+            float height = 1f;
+            List<Vector3> vertices = new List<Vector3>();
+            List<int> triangles = new List<int>();
+
+            // Create vertices
+            for (int i = 0; i < sides; i++)
+            {
+                float angle = 2 * Mathf.PI * i / sides;
+                float x = radius * Mathf.Cos(angle);
+                float z = radius * Mathf.Sin(angle);
+
+                // Top vertices
+                vertices.Add(new Vector3(x, height / 2, z));
+                // Bottom vertices
+                vertices.Add(new Vector3(x, -height / 2, z));
+            }
+
+            // Center points
+            vertices.Add(new Vector3(0, height / 2, 0)); // Top center
+            vertices.Add(new Vector3(0, -height / 2, 0)); // Bottom center
+
+            int topCenterIndex = vertices.Count - 2;
+            int bottomCenterIndex = vertices.Count - 1;
+
+            // Create triangles with correct winding order
+            for (int i = 0; i < sides; i++)
+            {
+                int nextIndex = (i + 1) % sides;
+
+                // Top cap (CCW)
+                triangles.Add(topCenterIndex);
+                triangles.Add(nextIndex * 2);
+                triangles.Add(i * 2);
+
+                // Bottom cap (CW)
+                triangles.Add(bottomCenterIndex);
+                triangles.Add(i * 2 + 1);
+                triangles.Add(nextIndex * 2 + 1);
+
+                // Side faces (CCW)
+                triangles.Add(i * 2);
+                triangles.Add(nextIndex * 2 + 1);
+                triangles.Add(i * 2 + 1);
+
+                triangles.Add(i * 2);
+                triangles.Add(nextIndex * 2);
+                triangles.Add(nextIndex * 2 + 1);
+            }
+
+            // Assign vertices and triangles to the mesh
+            mesh.vertices = vertices.ToArray();
+            mesh.triangles = triangles.ToArray();
+
+            // Recalculate normals for proper lighting
+            mesh.RecalculateNormals();
+
+            return mesh;
         }
     }
 
@@ -80,6 +150,8 @@ namespace MeshVisualizer
         public void Start()
         {
             renderer = GetComponent<MeshRenderer>();
+
+            SetState(Plugin.Instance.areaEnabled.Value);
         }
 
         public void SetState(bool state)
@@ -132,6 +204,13 @@ namespace MeshVisualizer
 
                     foreach (Collider collider in colliders)
                     {
+                        //If this collider already has a child with a area of effect, skip it.
+                        AreaEffect childScripts = collider.transform.GetComponentInChildren<AreaEffect>();
+                        if(childScripts != null)
+                        {
+                            continue;
+                        }
+
                         // Check if the collider has isTrigger enabled
                         if (collider.isTrigger)
                         {
@@ -161,6 +240,17 @@ namespace MeshVisualizer
                             Renderer cubeRenderer = cube.GetComponent<Renderer>();
                             cubeRenderer.material = Plugin.Instance.semiTransparentOrange;
 
+                            // If the blockID is 1545, replace the cube's mesh with the dodecagon mesh
+                            if (__instance.blockID == 1545)
+                            {
+                                MeshFilter meshFilter = cube.GetComponent<MeshFilter>();
+                                if (meshFilter != null)
+                                {
+                                    meshFilter.mesh = Plugin.Instance.unitDodecagonMesh;
+                                }
+                            }
+
+                            // Add the AreaEffect component to the cube
                             cube.AddComponent<AreaEffect>();
                         }
                     }
@@ -169,4 +259,3 @@ namespace MeshVisualizer
         }
     }
 }
-
