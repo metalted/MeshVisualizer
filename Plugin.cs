@@ -11,7 +11,7 @@ namespace MeshVisualizer
     {
         public const string pluginName = "Area of Effect";
         public const string pluginGuid = "com.metalted.zeepkist.areaofeffect";
-        public const string pluginVersion = "1.6.1";
+        public const string pluginVersion = "1.6.2";
 
         public static Plugin Instance;
         public LEV_LevelEditorCentral central;
@@ -68,10 +68,9 @@ namespace MeshVisualizer
         {
             if (central != null)
             {
-                if (Input.GetKeyDown(KeyCode.Keypad9))
+                if (Input.GetKeyDown(toggleAreas.Value))
                 {
                     areaEnabled.Value = !areaEnabled.Value;
-                    //Debug.Log("Area enabled: " + areaEnabled.Value);
                     Config.Save();
                 }
             }
